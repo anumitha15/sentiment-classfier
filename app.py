@@ -12,11 +12,12 @@ CORS(app)
 model = joblib.load("model.pkl")
 
 # MongoDB connection (SSL FIX)
+mongo_uri = os.getenv("MONGO_URI")
+
 client = MongoClient(
-    
+    mongo_uri,
     tlsCAFile=certifi.where()
 )
-
 db = client["ai_text_db"]
 collection = db["logs"]
 
