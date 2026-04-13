@@ -13,7 +13,7 @@ model = joblib.load("model.pkl")
 
 # MongoDB connection (SSL FIX)
 client = MongoClient(
-    "mongodb+srv://anumithamanivannan155:anu0123456@cluster0.soxmhs3.mongodb.net/",
+    
     tlsCAFile=certifi.where()
 )
 
