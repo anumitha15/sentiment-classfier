@@ -41,3 +41,6 @@ jobs:
       - name: Push to ECR
         run: |
           docker push 596916983156.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
+      - name: Debug secrets
+        run: |
+          echo "KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}"
