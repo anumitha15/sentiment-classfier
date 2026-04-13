@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Text Classifier</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            margin-top: 10px;
+            resize: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+
+        .result {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f3f4f6;
+            border-radius: 8px;
+        }
+
+        .history {
+            margin-top: 20px;
+        }
+
+        .card {
+            background: #f9fafb;
+            padding: 10px;
+            margin-top: 8px;
+            border-radius: 8px;
+            border-left: 4px solid #4f46e5;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>🧠 AI Text Classifier</h2>
+
+    <!-- INPUT -->
+    <textarea id="textInput" placeholder="Enter your text here..."></textarea>
+
+    <button onclick="predictText()">Predict</button>
+
+    <!-- RESULT -->
+    <div class="result" id="resultBox">
+        Prediction will appear here...
+    </div>
+
+    <!-- HISTORY -->
+    <div class="history">
+        <h3>📊 History</h3>
+        <button onclick="loadHistory()">Load History</button>
+        <div id="historyBox"></div>
+    </div>
+
+</div>
+
+<script>
+
+// 🔥 Predict text using ML backend
+function predictText() {
+    const text = document.getElementById("textInput").value;
+
+    fetch("http://127.0.0.1:5001/predict", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ text: text })
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("resultBox").innerHTML =
+            "🧠 Prediction: <b>" + data.prediction + "</b>";
+    })
+    .catch(err => {
+        console.log(err);
+        alert("Error connecting to backend");
+    });
+}
+
+
+// 🔥 Load saved history from database
+function loadHistory() {
+    fetch("http://127.0.0.1:5001/history")
+    .then(res => res.json())
+    .then(data => {
+        let box = document.getElementById("historyBox");
+        box.innerHTML = "";
+
+        data.forEach(item => {
+            box.innerHTML += `
+                <div class="card">
+                    <b>Text:</b> ${item.text} <br>
+                    <b>Prediction:</b> ${item.prediction}
+                </div>
+            `;
+        });
+    })
+    .catch(err => {
+        console.log(err);
+        alert("Error loading history");
+    });
+}
+
+</script>
+
+</body>
+</html>
