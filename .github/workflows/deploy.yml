@@ -2,41 +2,71 @@ name: CI-CD Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
+    env:
+      AWS_REGION: ap-south-1
+      ECR_REPOSITORY: ai-text-classifier
+      EKS_CLUSTER_NAME: your-cluster-name
+      IMAGE_TAG: ${{ github.sha }}
+
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Checkout code
-      uses: actions/checkout@v3
+      # ✅ Configure AWS using Secrets
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ap-south-1
+      # ✅ Login to ECR
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | \
+          docker login --username AWS --password-stdin 596916983156.dkr.ecr.$AWS_REGION.amazonaws.com
 
-    - name: Login to ECR
-      run: |
-        aws ecr get-login-password --region ap-south-1 | \
-        docker login --username AWS --password-stdin 596916983156.dkr.ecr.ap-south-1.amazonaws.com
+      # ✅ Ensure ECR repo exists (safe step)
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories --repository-names $ECR_REPOSITORY || \
+          aws ecr create-repository --repository-name $ECR_REPOSITORY
 
-    - name: Build Docker Image
-      run: |
-        docker build -t ai-text-classifier .
+      # ✅ Build Docker Image
+      - name: Build Docker image
+        run: |
+          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
 
-    - name: Tag Image
-      run: |
-        docker tag ai-text-classifier:latest 596916983156.dkr.ecr.ap-south-1.amazonaws.com/ai-text-classifier:latest
+      # ✅ Tag Image
+      - name: Tag Docker image
+        run: |
+          docker tag $ECR_REPOSITORY:$IMAGE_TAG \
+          596916983156.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
 
-    - name: Push to ECR
-      run: |
-        docker push 596916983156.dkr.ecr.ap-south-1.amazonaws.com/ai-text-classifier:latest
+      # ✅ Push to ECR
+      - name: Push Docker image to ECR
+        run: |
+          docker push 596916983156.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
 
-    - name: Deploy to Kubernetes
-      run: |
-        kubectl apply -f deployment.yaml
+      # ✅ Setup kubectl
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      # ✅ Configure kubeconfig for EKS
+      - name: Configure kubeconfig
+        run: |
+          aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+
+      # ✅ Deploy to Kubernetes
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl set image deployment/ai-text-classifier \
+          ai-text-classifier=596916983156.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
+
+          kubectl rollout status deployment/ai-text-classifier
